@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use std::fs::File;
 use std::io::Read;
 use std::sync::{Arc, Mutex};
@@ -25,9 +25,9 @@ impl Statistics {
 
 // parse a chunk, sum up all the entries in it. Return sum and count
 // This function is called by multiple threads running in parallel.
-fn parse_and_compute(chunk: Vec<u8>) -> HashMap<String, Statistics> {
+fn parse_and_compute(chunk: Vec<u8>) -> FxHashMap<String, Statistics> {
     // Initialize intermediate data structures
-    let mut station_temps: HashMap<&str, Vec<f64>> = HashMap::new();
+    let mut station_temps: FxHashMap<&str, Vec<f64>> = FxHashMap::default();
     let content = String::from_utf8_lossy(&chunk);
     // Iterate over the rows in the file buffer and populate data structures
     content.split('\n').for_each(|row| {
@@ -50,7 +50,7 @@ fn parse_and_compute(chunk: Vec<u8>) -> HashMap<String, Statistics> {
         }
     });
     // Compute aggregations
-    let mut results: HashMap<String, Statistics> = HashMap::new();
+    let mut results: FxHashMap<String, Statistics> = FxHashMap::default();
     station_temps.iter().for_each(|(name, temps)| {
         let mut sum_temp = 0.0;
         let mut min_temp = (*temps)[0];
@@ -150,7 +150,7 @@ fn main() -> std::io::Result<()> {
     let chunks = create_newline_separated_chunks(contents.as_str(), chunk_size);
 
     // Spawn threads
-    let results = Arc::new(Mutex::new(HashMap::<String, Statistics>::new()));
+    let results = Arc::new(Mutex::new(FxHashMap::<String, Statistics>::default()));
     for chunk in chunks {
         let result_clone = Arc::clone(&results);
         let handle = thread::spawn(move || {
