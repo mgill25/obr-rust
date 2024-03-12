@@ -1,6 +1,6 @@
+use memmap2::Mmap;
 use rustc_hash::FxHashMap;
 use std::fs::File;
-use std::io::Read;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -140,14 +140,16 @@ mod tests {
 /// this is the main function.
 fn main() -> std::io::Result<()> {
     // Open file and read data into a buffer
-    let mut file = File::open("measurements.100_mil.txt")?;
-    let mut contents = String::new();
-    let _ = file.read_to_string(&mut contents)?;
+    let file = File::open("measurements.100_mil.txt")?;
+    let mapped_data = unsafe { Mmap::map(&file) }.expect("failed to create memory map");
+    let raw_data = &*mapped_data;
+    let contents = raw_data.strip_suffix(b"\n").unwrap_or(raw_data);
+    let contents = String::from_utf8_lossy(contents);
     let mut handles = vec![];
 
     // Divide up the input file into chunks
-    let chunk_size = 32 * 1024 * 1024;
-    let chunks = create_newline_separated_chunks(contents.as_str(), chunk_size);
+    let chunk_size = 128 * 1024 * 1024;
+    let chunks = create_newline_separated_chunks(contents.into_owned().as_str(), chunk_size);
 
     // Spawn threads
     let results = Arc::new(Mutex::new(FxHashMap::<String, Statistics>::default()));
